@@ -29,7 +29,10 @@ class RunningServices: Service() {
 
     override fun onDestroy() {
         isRunning = false
-        timerThread.interrupt()
+        if (::timerThread.isInitialized){
+            timerThread.interrupt()
+        }
+
         super.onDestroy()
     }
 
@@ -40,12 +43,16 @@ class RunningServices: Service() {
 
 
         timerThread = Thread {
-            while (isRunning) {
-                Thread.sleep(1000)
-                seconds++
-                val notification = buildNotification("Timer: ${seconds}s")
-                val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-               manager.notify(1, notification)
+            try {
+                while (isRunning) {
+                    Thread.sleep(1000)
+                    seconds++
+                    val notification = buildNotification("Timer: ${seconds}s")
+                    val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+                    manager.notify(1, notification)
+                }
+            } catch (e: InterruptedException) {
+                e.printStackTrace()
             }
         }
 
