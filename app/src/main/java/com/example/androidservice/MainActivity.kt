@@ -37,14 +37,19 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.StartService.setOnClickListener {
-            val intent = Intent(this, RunningServices::class.java)
-            intent.action = RunningServices.Actions.START.toString()
-            startService(intent)
+            val intent = Intent(this, MusicService::class.java)
+            intent.action = MusicService.ACTION.START.toString()
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
         }
 
         binding.stopService.setOnClickListener {
-            val intent = Intent(this, RunningServices::class.java)
-            intent.action = RunningServices.Actions.STOP.toString()
+            val intent = Intent(this, MusicService::class.java)
+            intent.action = MusicService.ACTION.STOP.toString()
             startService(intent)
         }
 

@@ -6,12 +6,19 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
-class RunningServices: Service() {
+class RunningServices : Service() {
 
     private var seconds = 0
-    private var isRunning = false
-    private lateinit var timerThread: Thread
+
+    private var serviceJob: Job? = null
+    private val serviceScope = CoroutineScope(Dispatchers.Default)
 
 
     override fun onBind(p0: Intent?): IBinder? {
@@ -20,54 +27,47 @@ class RunningServices: Service() {
 
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when(intent?.action){
-            Actions.START.toString() -> start()
-            Actions.STOP.toString() -> stopSelf()
-        }
-        return super.onStartCommand(intent, flags, startId)
-    }
+        when (intent?.action) {
+            Actions.START.toString() -> {
+             start()
+            }
 
-    override fun onDestroy() {
-        isRunning = false
-        if (::timerThread.isInitialized){
-            timerThread.interrupt()
-        }
-
-        super.onDestroy()
-    }
-
-    private fun start(){
-        isRunning = true
-
-        startForeground(1,buildNotification("Timer started: 0s"))
-
-
-        timerThread = Thread {
-            try {
-                while (isRunning) {
-                    Thread.sleep(1000)
-                    seconds++
-                    val notification = buildNotification("Timer: ${seconds}s")
-                    val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-                    manager.notify(1, notification)
-                }
-            } catch (e: InterruptedException) {
-                e.printStackTrace()
+            Actions.STOP.toString() -> {
+                stopSelf()
             }
         }
 
-        timerThread.start()
+        return START_STICKY
+    }
+
+    override fun onDestroy() {
+        serviceJob?.cancel()
+        super.onDestroy()
+    }
+
+    private fun start() {
+        startForeground(1, buildNotification("Timer started: 0s"))
+
+        serviceJob = serviceScope.launch {
+            while (isActive) {
+                delay(1000)
+                seconds++
+                val notification = buildNotification("Timer: ${seconds}s")
+                val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+                manager.notify(1, notification)
+            }
+        }
     }
 
     private fun buildNotification(content: String): Notification {
-        return NotificationCompat.Builder(this,"running_channel")
+        return NotificationCompat.Builder(this, "running_channel")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("Stopwatch Running")
             .setContentTitle(content)
             .build()
     }
 
-    enum class Actions{
-        START,STOP
+    enum class Actions {
+        START, STOP
     }
 }
